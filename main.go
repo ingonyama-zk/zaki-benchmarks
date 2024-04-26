@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -10,19 +11,18 @@ import (
 	"github.com/consensys/gnark/frontend/cs/r1cs"
 )
 
-// SimpleCircuit defines serial multiplication by constant
+const N = 20
+const Size = 1 << N
 
 type Circuit struct {
-	// struct tags on a variable is optional
-	// default uses variable name and secret visibility.
 	X frontend.Variable `gnark:"x"`
 	Y frontend.Variable `gnark:"y,public"`
 }
 
-// Define declares the circuit constraints
+// Define declares the benchmark circuit: serial multiplication by constant
 func (circuit *Circuit) Define(api frontend.API) error {
 	product := api.Add(0, 1)
-	for i := 0; i < 1048576; i++ {
+	for i := 0; i < Size; i++ {
 		product = api.Mul(product, circuit.X)
 	}
 	api.AssertIsEqual(circuit.Y, product)
@@ -30,41 +30,57 @@ func (circuit *Circuit) Define(api frontend.API) error {
 }
 
 func main() {
-	// var p big.Int
-	// p.SetString("28948022282369102195019208192891642640133654916059891165940443302932250623999", 10)
-	// var f big.Int
-	// f.SetString("3", 10)
+	// calculate Y
+	var p big.Int
+	p.SetString("21888242871839275222246405745257275088548364400416034343698204186575808495617", 10)
+	var f big.Int
+	f.SetString("42188824287", 10)
 	var ans big.Int
-	ans.SetString("4428520108356670630000506301092116295361092437393728072026799124175523110981", 10) // take from gnark playground
-	// for i := 0; i < 4; i++ {
-	// 	ans = *ans.Mul(&ans, &f)
-	// 	ans = *ans.Mod(&ans, &p)
-	// }
+	ans.SetString("1", 10)
+	for i := 0; i < Size; i++ {
+		ans = *ans.Mul(&ans, &f)
+		ans = *ans.Mod(&ans, &p)
+	}
 
-	println("Y: ", ans.String())
-
-	// compiles our circuit into a R1CS
+	// compiles the circuit into a R1CS
 	var circuit Circuit
-	ccs, _ := frontend.Compile(ecc.BN254.ScalarField(), r1cs.NewBuilder, &circuit)
+	ccs, err := frontend.Compile(ecc.BN254.ScalarField(), r1cs.NewBuilder, &circuit)
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	// groth16 zkSNARK: Setup
-	pk, vk, _ := groth16.Setup(ccs)
+	pk, vk, err := groth16.Setup(ccs)
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	// witness definition
-	assignment := Circuit{X: 3, Y: ans}
+	assignment := Circuit{X: f, Y: ans}
 
-	witness, _ := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
+	witness, err := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
+	if err != nil {
+		fmt.Println(err)
+	}
 
-	publicWitness, _ := witness.Public()
+	publicWitness, err := witness.Public()
+	if err != nil {
+		fmt.Println(err)
+	}
 
-	// groth16: Prove & Verify
+	// Prove & Verify
 
-	// toggle on
-	proofIci, _ := groth16.Prove(ccs, pk, witness, backend.WithIcicleAcceleration())
+	// on GPU
+	proofIci, err := groth16.Prove(ccs, pk, witness, backend.WithIcicleAcceleration())
+	if err != nil {
+		fmt.Println(err)
+	}
 	groth16.Verify(proofIci, vk, publicWitness)
-	// toggle off
-	// proof, err := groth16.Prove(ccs, pk, witness)
 
-	proof, _ := groth16.Prove(ccs, pk, witness)
+	// on CPU
+	proof, err := groth16.Prove(ccs, pk, witness)
+	if err != nil {
+		fmt.Println(err)
+	}
 	groth16.Verify(proof, vk, publicWitness)
 }
