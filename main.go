@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"math/big"
@@ -32,7 +33,14 @@ func (circuit *Circuit) Define(api frontend.API) error {
 	return nil
 }
 
+var benchGPU bool
+func init() {
+	flag.BoolVar(&benchGPU, "bench_gpu", false, "Benchmarks GPU perfomance in addition to CPU performance")
+}
+
+
 func main() {
+	flag.Parse()
 	f, err := os.Create("cpu.prof")
 	if err != nil {
 		log.Fatal("could not create CPU profile: ", err)
@@ -81,28 +89,30 @@ func main() {
 
 	// on GPU
 	// Start CPU profiling.
-	if err1 := pprof.StartCPUProfile(f); err != nil {
-		log.Fatal("could not start CPU profile: ", err1)
-	}
-	proofIci, err := groth16.Prove(ccs, pk, witness, backend.WithIcicleAcceleration())
-	if err != nil {
-		fmt.Println(err)
-	}
-	// Stop CPU profiling.
-	pprof.StopCPUProfile()
-	err = groth16.Verify(proofIci, vk, publicWitness)
-	
-	if err != nil {
-		fmt.Println("Verify failed:", err)
-	}
+	if benchGPU {
+		if err1 := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err1)
+		}
+		proofIci, err := groth16.Prove(ccs, pk, witness, backend.WithIcicleAcceleration())
+		if err != nil {
+			fmt.Println(err)
+		}
+		// Stop CPU profiling.
+		pprof.StopCPUProfile()
+		err = groth16.Verify(proofIci, vk, publicWitness)
+		
+		if err != nil {
+			fmt.Println("Verify failed:", err)
+		}
 
-	proofIci2, err2 := groth16.Prove(ccs, pk, witness, backend.WithIcicleAcceleration())
-	if err2 != nil {
-		fmt.Println(err2)
-	}
-	err = groth16.Verify(proofIci2, vk, publicWitness)
-	if err != nil {
-		fmt.Println("Verify failed:", err)
+		proofIci2, err2 := groth16.Prove(ccs, pk, witness, backend.WithIcicleAcceleration())
+		if err2 != nil {
+			fmt.Println(err2)
+		}
+		err = groth16.Verify(proofIci2, vk, publicWitness)
+		if err != nil {
+			fmt.Println("Verify failed:", err)
+		}
 	}
 
 	// on CPU
