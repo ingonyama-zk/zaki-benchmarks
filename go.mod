@@ -14,7 +14,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.5.0 // indirect
 	github.com/google/pprof v0.0.0-20230817174616-7a8ec2ada47b // indirect
-	github.com/ingonyama-zk/icicle/v2 v2.0.2 // indirect
+	github.com/ingonyama-zk/icicle/v2 v2.0.3 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
@@ -27,4 +27,6 @@ require (
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
-replace github.com/consensys/gnark v0.10.0 => github.com/ingonyama-zk/gnark v0.0.0-20240426051713-ec3c98052a00
+replace github.com/consensys/gnark v0.10.0 => github.com/ingonyama-zk/gnark v0.0.0-20240428061035-89c49e44f6fe
+
+// replace github.com/consensys/gnark v0.10.0 => ../ingo-gnark

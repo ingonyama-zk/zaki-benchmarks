@@ -14,7 +14,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/r1cs"
 )
 
-const N = 20
+const N = 24
 const Size = 1 << N
 
 type Circuit struct {
@@ -90,17 +90,28 @@ func main() {
 	}
 	// Stop CPU profiling.
 	pprof.StopCPUProfile()
-	groth16.Verify(proofIci, vk, publicWitness)
+	err = groth16.Verify(proofIci, vk, publicWitness)
+	
+	if err != nil {
+		fmt.Println("Verify failed:", err)
+	}
+
 	proofIci2, err2 := groth16.Prove(ccs, pk, witness, backend.WithIcicleAcceleration())
 	if err2 != nil {
-		fmt.Println(err)
+		fmt.Println(err2)
 	}
-	groth16.Verify(proofIci2, vk, publicWitness)
+	err = groth16.Verify(proofIci2, vk, publicWitness)
+	if err != nil {
+		fmt.Println("Verify failed:", err)
+	}
 
 	// on CPU
 	proof, err := groth16.Prove(ccs, pk, witness)
 	if err != nil {
 		fmt.Println(err)
 	}
-	groth16.Verify(proof, vk, publicWitness)
+	err = groth16.Verify(proof, vk, publicWitness)
+	if err != nil {
+		fmt.Println("Verify failed:", err)
+	}
 }
