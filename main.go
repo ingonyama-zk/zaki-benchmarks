@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/big"
+	"os"
+	"runtime/pprof"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
@@ -30,15 +33,21 @@ func (circuit *Circuit) Define(api frontend.API) error {
 }
 
 func main() {
+	f, err := os.Create("cpu.prof")
+	if err != nil {
+		log.Fatal("could not create CPU profile: ", err)
+	}
+	defer f.Close() // Ensure the file is closed after the profiling is complete.
+
 	// calculate Y
 	var p big.Int
 	p.SetString("21888242871839275222246405745257275088548364400416034343698204186575808495617", 10)
-	var f big.Int
-	f.SetString("42188824287", 10)
+	var factor big.Int
+	factor.SetString("42188824287", 10)
 	var ans big.Int
 	ans.SetString("1", 10)
 	for i := 0; i < Size; i++ {
-		ans = *ans.Mul(&ans, &f)
+		ans = *ans.Mul(&ans, &factor)
 		ans = *ans.Mod(&ans, &p)
 	}
 
@@ -56,7 +65,7 @@ func main() {
 	}
 
 	// witness definition
-	assignment := Circuit{X: f, Y: ans}
+	assignment := Circuit{X: factor, Y: ans}
 
 	witness, err := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
 	if err != nil {
@@ -71,11 +80,22 @@ func main() {
 	// Prove & Verify
 
 	// on GPU
+	// Start CPU profiling.
+	if err1 := pprof.StartCPUProfile(f); err != nil {
+		log.Fatal("could not start CPU profile: ", err1)
+	}
 	proofIci, err := groth16.Prove(ccs, pk, witness, backend.WithIcicleAcceleration())
 	if err != nil {
 		fmt.Println(err)
 	}
+	// Stop CPU profiling.
+	pprof.StopCPUProfile()
 	groth16.Verify(proofIci, vk, publicWitness)
+	proofIci2, err2 := groth16.Prove(ccs, pk, witness, backend.WithIcicleAcceleration())
+	if err2 != nil {
+		fmt.Println(err)
+	}
+	groth16.Verify(proofIci2, vk, publicWitness)
 
 	// on CPU
 	proof, err := groth16.Prove(ccs, pk, witness)
