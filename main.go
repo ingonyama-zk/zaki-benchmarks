@@ -15,7 +15,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/r1cs"
 )
 
-const N = 24
+const N = 23
 const Size = 1 << N
 
 type Circuit struct {
@@ -34,10 +34,10 @@ func (circuit *Circuit) Define(api frontend.API) error {
 }
 
 var benchGPU bool
-func init() {
-	flag.BoolVar(&benchGPU, "bench_gpu", false, "Benchmarks GPU perfomance in addition to CPU performance")
-}
 
+func init() {
+	flag.BoolVar(&benchGPU, "bench_gpu", true, "Benchmarks GPU perfomance in addition to CPU performance")
+}
 
 func main() {
 	flag.Parse()
@@ -100,7 +100,7 @@ func main() {
 		// Stop CPU profiling.
 		pprof.StopCPUProfile()
 		err = groth16.Verify(proofIci, vk, publicWitness)
-		
+
 		if err != nil {
 			fmt.Println("Verify failed:", err)
 		}
