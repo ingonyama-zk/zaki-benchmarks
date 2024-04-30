@@ -3,10 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"math/big"
 	"os"
-	"runtime/pprof"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
@@ -14,9 +12,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/r1cs"
 )
-
-const N = 23
-const Size = 1 << N
 
 type Circuit struct {
 	X frontend.Variable `gnark:"x"`
@@ -26,26 +21,29 @@ type Circuit struct {
 // Define declares the benchmark circuit: serial multiplication by constant
 func (circuit *Circuit) Define(api frontend.API) error {
 	product := api.Add(0, 1)
-	for i := 0; i < Size; i++ {
+	size := 1 << N
+	for i := 0; i < size; i++ {
 		product = api.Mul(product, circuit.X)
 	}
 	api.AssertIsEqual(circuit.Y, product)
 	return nil
 }
 
-var benchGPU bool
-
+var benchGPU, benchCPU, benchAll bool
+var N int
 func init() {
-	flag.BoolVar(&benchGPU, "bench_gpu", true, "Benchmarks GPU perfomance in addition to CPU performance")
+	flag.BoolVar(&benchGPU, "bench_gpu", false, "Benchmarks GPU perfomance. Default: false")
+	flag.BoolVar(&benchCPU, "bench_cpu", false, "Benchmarks CPU perfomance. Default: false")
+	flag.BoolVar(&benchAll, "bench_all", false, "Benchmarks GPU and CPU perfomance. Default: false")
+	flag.IntVar(&N, "size", 24, "Size as a power of two that should be benched; e.g. 20 for benching 2^20.")
 }
 
 func main() {
 	flag.Parse()
-	f, err := os.Create("cpu.prof")
-	if err != nil {
-		log.Fatal("could not create CPU profile: ", err)
+
+	if !benchCPU && !benchGPU && !benchAll {
+		panic("No hardware was selected for benchmarking. Please select CPU, GPU, or both with the flags --bench_gpu, --bench_cpu, or --bench_all")
 	}
-	defer f.Close() // Ensure the file is closed after the profiling is complete.
 
 	// calculate Y
 	var p big.Int
@@ -54,7 +52,8 @@ func main() {
 	factor.SetString("42188824287", 10)
 	var ans big.Int
 	ans.SetString("1", 10)
-	for i := 0; i < Size; i++ {
+	size := 1 << N
+	for i := 0; i < size; i++ {
 		ans = *ans.Mul(&ans, &factor)
 		ans = *ans.Mod(&ans, &p)
 	}
@@ -88,40 +87,38 @@ func main() {
 	// Prove & Verify
 
 	// on GPU
-	// Start CPU profiling.
-	if benchGPU {
-		if err1 := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal("could not start CPU profile: ", err1)
-		}
+	if benchGPU || benchAll {
 		proofIci, err := groth16.Prove(ccs, pk, witness, backend.WithIcicleAcceleration())
 		if err != nil {
 			fmt.Println(err)
 		}
-		// Stop CPU profiling.
-		pprof.StopCPUProfile()
 		err = groth16.Verify(proofIci, vk, publicWitness)
 
 		if err != nil {
 			fmt.Println("Verify failed:", err)
 		}
 
+		os.Setenv("profile", "ON")
 		proofIci2, err2 := groth16.Prove(ccs, pk, witness, backend.WithIcicleAcceleration())
 		if err2 != nil {
 			fmt.Println(err2)
 		}
+		os.Unsetenv("profile")
 		err = groth16.Verify(proofIci2, vk, publicWitness)
 		if err != nil {
 			fmt.Println("Verify failed:", err)
 		}
 	}
 
-	// on CPU
-	proof, err := groth16.Prove(ccs, pk, witness)
-	if err != nil {
-		fmt.Println(err)
-	}
-	err = groth16.Verify(proof, vk, publicWitness)
-	if err != nil {
-		fmt.Println("Verify failed:", err)
+	if benchCPU || benchAll {
+		// on CPU
+		proof, err := groth16.Prove(ccs, pk, witness)
+		if err != nil {
+			fmt.Println(err)
+		}
+		err = groth16.Verify(proof, vk, publicWitness)
+		if err != nil {
+			fmt.Println("Verify failed:", err)
+		}
 	}
 }
