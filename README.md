@@ -13,8 +13,8 @@ go run -tags=icicle main.go <options>
 
 ### USAGE
 ```sh
-go run -tags=icicle main.go <options>
-```
+go run -tags=icicle main.go --help
+
   -bench_all
         Benchmarks GPU and CPU perfomance. Default: false
   -bench_cpu
@@ -23,3 +23,4 @@ go run -tags=icicle main.go <options>
         Benchmarks GPU perfomance. Default: false
   -size int
         Size as a power of two that should be benched; e.g. 20 for benching 2^20 (default 24)
+```
