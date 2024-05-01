@@ -29,12 +29,13 @@ func (circuit *Circuit) Define(api frontend.API) error {
 	return nil
 }
 
-var benchGPU, benchCPU, benchAll bool
+var benchGPU, benchCPU, benchAll, profile bool
 var N int
 func init() {
 	flag.BoolVar(&benchGPU, "bench_gpu", false, "Benchmarks GPU perfomance. Default: false")
 	flag.BoolVar(&benchCPU, "bench_cpu", false, "Benchmarks CPU perfomance. Default: false")
 	flag.BoolVar(&benchAll, "bench_all", false, "Benchmarks GPU and CPU perfomance. Default: false")
+	flag.BoolVar(&profile, "profile", false, "Prints profile timings. Default: false")
 	flag.IntVar(&N, "size", 24, "Size as a power of two that should be benched; e.g. 20 for benching 2^20.")
 }
 
@@ -98,12 +99,16 @@ func main() {
 			fmt.Println("Verify failed:", err)
 		}
 
-		os.Setenv("profile", "ON")
+		if profile {
+			os.Setenv("LOG_LEVEL", "DEBUG")
+		}
 		proofIci2, err2 := groth16.Prove(ccs, pk, witness, backend.WithIcicleAcceleration())
 		if err2 != nil {
 			fmt.Println(err2)
 		}
-		os.Unsetenv("profile")
+		if profile {
+			os.Unsetenv("LOG_LEVEL")
+		}
 		err = groth16.Verify(proofIci2, vk, publicWitness)
 		if err != nil {
 			fmt.Println("Verify failed:", err)
@@ -112,9 +117,15 @@ func main() {
 
 	if benchCPU || benchAll {
 		// on CPU
+		if profile {
+			os.Setenv("LOG_LEVEL", "DEBUG")
+		}
 		proof, err := groth16.Prove(ccs, pk, witness)
 		if err != nil {
 			fmt.Println(err)
+		}
+		if profile {
+			os.Unsetenv("LOG_LEVEL")
 		}
 		err = groth16.Verify(proof, vk, publicWitness)
 		if err != nil {

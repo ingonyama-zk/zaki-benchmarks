@@ -1,6 +1,6 @@
 module test.com/jeremy
 
-go 1.22.1
+go 1.22
 
 require (
 	github.com/consensys/gnark v0.10.0
@@ -27,6 +27,9 @@ require (
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
-replace github.com/consensys/gnark v0.10.0 => github.com/ingonyama-zk/gnark v0.0.0-20240430103841-a7780a8841f4
+replace github.com/consensys/gnark v0.10.0 => github.com/ingonyama-zk/gnark v0.0.0-20240501112706-e064449bdc44
 
-// replace github.com/consensys/gnark v0.10.0 => ../ingo-gnark
+// replace (
+// 	github.com/consensys/gnark v0.10.0 => ../gnark
+// 	github.com/ingonyama-zk/icicle/v2 v2.0.3 => ../icicle
+// )

@@ -23,4 +23,6 @@ go run -tags=icicle main.go --help
         Benchmarks GPU perfomance. Default: false
   -size int
         Size as a power of two that should be benched; e.g. 20 for benching 2^20 (default 24)
+  -profile
+        Prints profile timings. Default: false
 ```
